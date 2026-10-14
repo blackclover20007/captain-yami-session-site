@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import http from 'node:http';
 import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { readFile, readdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
@@ -10,31 +11,33 @@ import P from 'pino';
 import QRCode from 'qrcode';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const authDir = path.resolve(process.env.SESSION_AUTH_DIR || './auth_info');
+const sessionRoot = path.resolve(process.env.SESSION_ROOT || './sessions');
 const port = Number(process.env.PORT || 3000);
 const siteKey = process.env.PAIRING_SITE_KEY || '';
 const logger = P({ level: process.env.LOG_LEVEL || 'info' });
-
-let pairing = { status: 'idle', mode: '', code: '', qr: '', phone: '', sessionId: '', message: '' };
-let activeSocket = null;
-let lastPairAt = 0;
+const sessions = new Map();
 
 function json(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   res.end(JSON.stringify(body));
 }
-
 function cleanPhone(input) { return String(input || '').replace(/\D/g, ''); }
 function keyIsValid(requestedKey) { return !siteKey || requestedKey === siteKey; }
+function newSessionId() { return `yami_${randomBytes(18).toString('base64url')}`; }
+function authDirFor(id) { return path.join(sessionRoot, id, 'auth_info'); }
+function publicPairing(state) { return { ...state.pairing, qr: state.pairing.mode === 'qr' ? state.pairing.qr : '' }; }
 
-async function registered() {
+function getSession(id) { return id && sessions.get(id); }
+function requireSession(req, input = {}) { return getSession(req.headers['x-session-id'] || input.sessionId); }
+
+async function registered(authDir) {
   try {
     const creds = JSON.parse(await readFile(path.join(authDir, 'creds.json'), 'utf8'));
     return Boolean(creds.registered);
   } catch { return false; }
 }
 
-async function collectSessionId() {
+async function collectSessionId(authDir) {
   const files = {};
   async function walk(dir, prefix = '') {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -48,50 +51,44 @@ async function collectSessionId() {
   return `YAMI_SESSION_V1.${gzipSync(Buffer.from(JSON.stringify(files))).toString('base64url')}`;
 }
 
-async function startPairing({ phone = '', requestedKey, mode }) {
+async function startPairing(state, { phone = '', requestedKey, mode }) {
   if (!keyIsValid(requestedKey)) throw new Error('Invalid site key.');
-  if (activeSocket || ['waiting', 'code', 'qr'].includes(pairing.status)) throw new Error('A pairing ritual is already active.');
-  if (Date.now() - lastPairAt < 30000) throw new Error('Please wait 30 seconds before requesting another code.');
+  if (state.activeSocket || ['waiting', 'code', 'qr'].includes(state.pairing.status)) throw new Error('This session slot already has a pairing ritual active.');
+  if (Date.now() - state.lastPairAt < 15000) throw new Error('Please wait 15 seconds before requesting another code in this slot.');
   if (mode === 'code' && (phone.length < 8 || phone.length > 15)) throw new Error('Enter an international number with country code, digits only.');
-  if (await registered()) throw new Error('A session already exists. Use Delete Existing Session first.');
+  if (await registered(state.authDir)) throw new Error('This slot already has a session. Use Delete Existing Session or create a new slot.');
 
-  lastPairAt = Date.now();
-  await rm(authDir, { recursive: true, force: true });
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
-  pairing = { status: 'awakening', mode, code: '', qr: '', phone, sessionId: '', message: 'Opening the Black Clover gate…' };
+  state.lastPairAt = Date.now();
+  await rm(path.dirname(state.authDir), { recursive: true, force: true });
+  const { state: authState, saveCreds } = await useMultiFileAuthState(state.authDir);
+  state.pairing = { status: 'awakening', mode, code: '', qr: '', phone, sessionId: '', message: 'Opening the Black Clover gate…' };
 
-  const sock = makeWASocket({
-    auth: state,
-    browser: Browsers.ubuntu('Chrome'),
-    logger,
-    markOnlineOnConnect: false,
-    syncFullHistory: false
-  });
-  activeSocket = sock;
+  const sock = makeWASocket({ auth: authState, browser: Browsers.ubuntu('Chrome'), logger, markOnlineOnConnect: false, syncFullHistory: false });
+  state.activeSocket = sock;
   sock.ev.on('creds.update', saveCreds);
   sock.ev.on('connection.update', async ({ connection, qr, lastDisconnect }) => {
     if (qr && mode === 'qr') {
-      pairing = { ...pairing, status: 'qr', qr: await QRCode.toDataURL(qr, { margin: 2, width: 320 }), message: 'Scan this QR with WhatsApp → Linked devices → Link a device.' };
+      state.pairing = { ...state.pairing, status: 'qr', qr: await QRCode.toDataURL(qr, { margin: 2, width: 320 }), message: 'Scan this QR with WhatsApp → Linked devices → Link a device.' };
     }
     if (connection === 'open') {
-      pairing = { ...pairing, status: 'complete', sessionId: await collectSessionId(), message: 'Session forged. Copy it into the bot deployment.', qr: '' };
-      activeSocket = null;
+      state.pairing = { ...state.pairing, status: 'complete', sessionId: await collectSessionId(state.authDir), message: 'Session forged. Copy it into the bot deployment.', qr: '' };
+      state.activeSocket = null;
       await sock.end?.(undefined);
     }
-    if (connection === 'close' && pairing.status !== 'complete') {
+    if (connection === 'close' && state.pairing.status !== 'complete') {
       const code = lastDisconnect?.error?.output?.statusCode;
-      pairing = { ...pairing, status: 'failed', code: '', qr: '', sessionId: '', message: `WhatsApp closed the gate (${code || 'temporary error'}). Try again.` };
-      activeSocket = null;
+      state.pairing = { ...state.pairing, status: 'failed', code: '', qr: '', sessionId: '', message: `WhatsApp closed the gate (${code || 'temporary error'}). Try again.` };
+      state.activeSocket = null;
     }
   });
 
   if (mode === 'code') {
-    pairing.status = 'waiting';
+    state.pairing.status = 'waiting';
     await new Promise((resolve) => setTimeout(resolve, Number(process.env.PAIRING_REQUEST_DELAY_MS || 1800)));
     const code = await sock.requestPairingCode(phone);
-    pairing = { ...pairing, status: 'code', code, message: 'On WhatsApp: Linked devices → Link a device → Link with phone number.' };
+    state.pairing = { ...state.pairing, status: 'code', code, qr: '', message: 'Phone-code mode is active. QR is intentionally hidden. On WhatsApp: Linked devices → Link a device → Link with phone number.' };
   } else {
-    pairing.status = 'waiting';
+    state.pairing.status = 'waiting';
   }
 }
 
@@ -103,25 +100,49 @@ async function body(req) {
 
 const server = http.createServer(async (req, res) => {
   try {
-    if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, service: 'captain-yami-session-site' });
+    if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, service: 'captain-yami-session-site', activeSlots: sessions.size });
+    if (req.method === 'POST' && req.url === '/api/session') {
+      const input = await body(req);
+      if (!keyIsValid(input.siteKey)) return json(res, 403, { error: 'Invalid site key.' });
+      const id = newSessionId();
+      sessions.set(id, { id, authDir: authDirFor(id), activeSocket: null, lastPairAt: 0, pairing: { status: 'idle', mode: '', code: '', qr: '', phone: '', sessionId: '', message: 'Session slot ready. Choose a pairing method.' } });
+      return json(res, 201, { sessionId: id });
+    }
     if (req.method === 'GET' && req.url === '/api/status') {
       if (!keyIsValid(req.headers['x-site-key'])) return json(res, 403, { error: 'Invalid site key.' });
-      return json(res, 200, { ...pairing, sessionId: pairing.status === 'complete' ? pairing.sessionId : '' });
+      const state = requireSession(req);
+      if (!state) return json(res, 404, { error: 'Session slot not found. Create a new slot.' });
+      return json(res, 200, publicPairing(state));
     }
     if (req.method === 'POST' && ['/api/pair', '/api/pair-qr'].includes(req.url)) {
       const input = await body(req);
+      if (!keyIsValid(input.siteKey)) return json(res, 403, { error: 'Invalid site key.' });
+      const state = requireSession(req, input);
+      if (!state) return json(res, 404, { error: 'Session slot not found. Create a new slot first.' });
       const mode = req.url === '/api/pair-qr' ? 'qr' : 'code';
       const phone = cleanPhone(input.phone);
       if (mode === 'code' && (phone.length < 8 || phone.length > 15)) return json(res, 400, { error: 'Enter an international number with country code, digits only.' });
-      startPairing({ phone, requestedKey: input.siteKey, mode }).catch((error) => { pairing = { ...pairing, status: 'failed', message: error.message }; });
+      startPairing(state, { phone, requestedKey: input.siteKey, mode }).catch((error) => { state.pairing = { ...state.pairing, status: 'failed', message: error.message }; });
       return json(res, 202, { ok: true });
     }
     if (req.method === 'POST' && req.url === '/api/reset') {
       const input = await body(req);
       if (!keyIsValid(input.siteKey)) return json(res, 403, { error: 'Invalid site key.' });
-      if (activeSocket) return json(res, 409, { error: 'Finish or cancel the active pairing ritual first.' });
-      await rm(authDir, { recursive: true, force: true });
-      pairing = { status: 'idle', mode: '', code: '', qr: '', phone: '', sessionId: '', message: 'Existing session deleted. Choose a new pairing method.' };
+      const state = requireSession(req, input);
+      if (!state) return json(res, 404, { error: 'Session slot not found.' });
+      if (state.activeSocket) return json(res, 409, { error: 'Finish or cancel the active pairing ritual first.' });
+      await rm(path.dirname(state.authDir), { recursive: true, force: true });
+      state.pairing = { status: 'idle', mode: '', code: '', qr: '', phone: '', sessionId: '', message: 'Existing session deleted. Choose a new pairing method.' };
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === 'POST' && req.url === '/api/session/delete') {
+      const input = await body(req);
+      if (!keyIsValid(input.siteKey)) return json(res, 403, { error: 'Invalid site key.' });
+      const state = requireSession(req, input);
+      if (!state) return json(res, 404, { error: 'Session slot not found.' });
+      if (state.activeSocket) return json(res, 409, { error: 'Finish or cancel the active pairing ritual first.' });
+      await rm(path.dirname(state.authDir), { recursive: true, force: true });
+      sessions.delete(state.id);
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {

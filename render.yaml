@@ -11,7 +11,7 @@ services:
         value: 20
       - key: PAIRING_SITE_KEY
         generateValue: true
-      - key: SESSION_AUTH_DIR
-        value: ./auth_info
+      - key: SESSION_ROOT
+        value: ./sessions
       - key: PAIRING_REQUEST_DELAY_MS
         value: 2500

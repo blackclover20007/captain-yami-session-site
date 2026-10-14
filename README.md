@@ -50,6 +50,18 @@ SESSION_ID=YAMI_SESSION_V1...
 
 The bot repository consumes the session and no longer performs interactive console pairing.
 
+## Multi-user panel behavior
+
+The panel creates an isolated session slot for each visitor and stores its temporary auth state under `SESSION_ROOT` (default `./sessions`). One user's pairing activity does not replace another user's slot.
+
+- **Phone Code mode** displays only the WhatsApp phone-linking code. QR data is intentionally suppressed in both the backend response and the browser UI.
+- **QR Code mode** displays only the live QR image for that slot.
+- **New Slot** creates another isolated workspace in the same panel.
+- **Resume Slot** restores the browser's current slot after a refresh using local storage.
+- **Delete This Session** removes only the current visitor's slot and its auth files.
+
+The session ID is still shown only after that slot successfully connects. Each user should copy their own ID into their own bot deployment as `SESSION_ID`.
+
 ## Security
 
 Treat the session ID and `auth_info/` as passwords. Never commit them, paste them into public issues, or expose the status endpoint without `PAIRING_SITE_KEY`. If a session is exposed, unlink it from WhatsApp and generate a new one.
