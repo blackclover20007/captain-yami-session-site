@@ -1,0 +1,12 @@
+node_modules/
+.tools/
+.cache/
+.env
+auth_info/
+downloads/
+data/owner-audit.jsonl
+data/access-control.json
+data/group-settings.json
+data/crash-recovery.jsonl
+*.log
+.DS_Store

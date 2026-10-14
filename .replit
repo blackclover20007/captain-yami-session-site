@@ -1,0 +1,9 @@
+run = "npm start"
+entrypoint = "session-site/server.js"
+
+[deployment]
+run = ["npm start"]
+
+[[ports]]
+localPort = 3000
+externalPort = 80

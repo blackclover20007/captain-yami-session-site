@@ -1,0 +1,19 @@
+{
+  "name": "captain-yami-session-site",
+  "version": "1.0.0",
+  "private": false,
+  "type": "module",
+  "description": "Captain Yami Bot browser-based WhatsApp pairing session forge.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node session-site/server.js",
+    "dev": "node --watch session-site/server.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "dotenv": "latest",
+    "pino": "latest"
+  }
+}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Captain Yami • Devil Gate</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;600;700&display=swap');
+    :root { --bg:#08070b; --panel:#121016; --panel2:#1b131b; --red:#ed2844; --red2:#ff6071; --cream:#f6eee8; --muted:#aa9da6; --line:#382530; }
+    * { box-sizing:border-box; } body { margin:0; min-height:100vh; color:var(--cream); background:radial-gradient(circle at 80% 0%,#49121f 0,transparent 28%),radial-gradient(circle at 0% 100%,#241126 0,transparent 35%),var(--bg); font-family:'Space Grotesk',sans-serif; }
+    body:before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.12; background-image:linear-gradient(transparent 95%,#fff 96%),linear-gradient(90deg,transparent 95%,#fff 96%); background-size:42px 42px; mask-image:linear-gradient(to bottom,black,transparent 80%); }
+    .wrap { max-width:1180px; margin:auto; padding:28px 20px 70px; position:relative; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:20px; border-bottom:1px solid var(--line); padding-bottom:20px; }
+    .brand { display:flex; align-items:center; gap:14px; } .sigil { width:48px; height:48px; display:grid; place-items:center; color:#09070b; font-size:26px; font-weight:700; background:var(--red); clip-path:polygon(50% 0,61% 20%,83% 8%,77% 34%,100% 50%,77% 60%,85% 90%,57% 77%,50% 100%,40% 78%,13% 91%,22% 61%,0 50%,22% 35%,15% 8%,39% 20%); }
+    .eyebrow { color:var(--red2); letter-spacing:.2em; font:500 11px 'DM Mono',monospace; text-transform:uppercase; } h1 { margin:4px 0 0; font-size:22px; letter-spacing:-.04em; } .badge { border:1px solid #6f2638; padding:8px 11px; color:var(--red2); font:11px 'DM Mono'; text-transform:uppercase; }
+    .hero { display:grid; grid-template-columns:1.2fr .8fr; gap:22px; padding:62px 0 30px; } .hero h2 { font-size:clamp(44px,7vw,88px); line-height:.88; letter-spacing:-.08em; margin:14px 0 20px; max-width:720px; } .hero h2 span { color:var(--red); } .hero p { color:var(--muted); max-width:570px; line-height:1.7; }
+    .panel { background:linear-gradient(145deg,rgba(34,20,31,.92),rgba(13,11,16,.94)); border:1px solid var(--line); box-shadow:0 24px 70px #0008; border-radius:20px; padding:24px; } .panel h3 { margin:0 0 18px; font-size:18px; } .panel h3 small { display:block; color:var(--red2); font:11px 'DM Mono'; letter-spacing:.12em; margin-bottom:8px; }
+    label { display:block; color:var(--muted); font:11px 'DM Mono'; text-transform:uppercase; letter-spacing:.1em; margin:14px 0 7px; } input { width:100%; border:1px solid var(--line); border-radius:10px; background:#08070b; color:var(--cream); padding:13px 14px; font:15px 'DM Mono'; outline:none; } input:focus { border-color:var(--red); box-shadow:0 0 0 3px #ed284422; }
+    button { width:100%; border:0; border-radius:10px; background:var(--red); color:#fff; padding:14px 16px; font:700 13px 'DM Mono'; text-transform:uppercase; letter-spacing:.08em; cursor:pointer; margin-top:18px; } button:hover { background:var(--red2); color:#16090d; } button.secondary { background:#291722; border:1px solid #6f2638; margin-top:10px; }
+    .status { margin-top:18px; border-left:3px solid var(--red); padding:12px 14px; background:#0b090e; color:var(--muted); font:12px/1.6 'DM Mono'; min-height:45px; } .code { margin-top:14px; font:700 clamp(27px,6vw,44px) 'DM Mono'; letter-spacing:.16em; color:var(--red2); text-align:center; background:#08070b; border:1px dashed #7e2a3e; border-radius:12px; padding:18px 8px; word-break:break-word; }
+    textarea { width:100%; height:105px; margin-top:12px; resize:vertical; background:#08070b; color:#d9cbd2; border:1px solid var(--line); border-radius:10px; padding:12px; font:10px/1.4 'DM Mono'; }
+    .menu { margin-top:24px; } .menu h3 { font-size:12px; color:var(--red2); font:500 11px 'DM Mono'; letter-spacing:.2em; text-transform:uppercase; } .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; } .card { padding:18px; min-height:126px; border:1px solid var(--line); background:#100d13aa; border-radius:14px; } .card b { display:block; color:var(--cream); margin-bottom:10px; } .card p { margin:0; color:var(--muted); font-size:13px; line-height:1.45; }
+    .foot { border-top:1px solid var(--line); margin-top:35px; padding-top:18px; color:#766873; font:11px 'DM Mono'; display:flex; justify-content:space-between; gap:15px; }
+    @media(max-width:800px){ .hero{grid-template-columns:1fr;padding-top:38px}.cards{grid-template-columns:repeat(2,1fr)} header{align-items:flex-start}.badge{display:none} } @media(max-width:450px){.wrap{padding:20px 14px 50px}.cards{grid-template-columns:1fr}.hero h2{font-size:50px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header><div class="brand"><div class="sigil">Y</div><div><div class="eyebrow">Black Clover // Session Forge</div><h1>Captain Yami Bot</h1></div></div><div class="badge">Devil Gate Online</div></header>
+    <section class="hero"><div><div class="eyebrow">Yami Black Clover · v1</div><h2>Enter the<br><span>Devil Gate.</span></h2><p>A private pairing forge for your Baileys bot. Generate the real WhatsApp linking code in your browser, then export one portable session ID for Replit, Render, or your panel.</p></div>
+      <div class="panel"><h3><small>01 / AWAKEN</small>Forge a session</h3><label for="phone">WhatsApp number · country code included</label><input id="phone" placeholder="263714373922" inputmode="numeric" autocomplete="off" /><label for="key">Gate key · only if configured</label><input id="key" type="password" placeholder="Optional deployment key" autocomplete="off" /><button id="pair">Summon pairing code</button><div id="status" class="status">The gate is dormant. Enter a number to begin.</div><div id="code" class="code" hidden></div><div id="sessionBox" hidden><label>Forged session ID · keep it secret</label><textarea id="session" readonly></textarea><button class="secondary" id="copy">Copy session ID</button><button class="secondary" id="download">Download session.txt</button></div></div>
+    </section>
+    <section class="menu"><h3>Devil menu / deployment ritual</h3><div class="cards"><div class="card"><b>01 · Pair</b><p>Use WhatsApp → Linked devices → Link with phone number.</p></div><div class="card"><b>02 · Copy</b><p>Wait for the session forge to complete, then copy the full ID.</p></div><div class="card"><b>03 · Inject</b><p>Set SESSION_ID in your bot's Replit Secrets or hosting environment.</p></div><div class="card"><b>04 · Awaken</b><p>Start the bot. It will consume credentials and never ask in the console.</p></div></div></section>
+    <footer class="foot"><span>CAPTAIN YAMI // MIDNIGHT CONTROL</span><span>Never share your session ID.</span></footer>
+  </main>
+<script>
+  const $ = id => document.getElementById(id); let timer;
+  function setStatus(text){ $('status').textContent=text; }
+  async function refresh(){ const r=await fetch('/api/status',{cache:'no-store',headers:{'x-site-key':$('key').value}}); const s=await r.json(); if(s.message) setStatus(s.message); if(s.error){setStatus(s.error);$('pair').disabled=false;$('pair').textContent='Try again';clearInterval(timer);return;} if(s.code){$('code').hidden=false;$('code').textContent=s.code;} if(s.status==='complete'&&s.sessionId){$('sessionBox').hidden=false;$('session').value=s.sessionId;$('pair').disabled=false;$('pair').textContent='Forge another session';clearInterval(timer);} if(s.status==='failed'){ $('pair').disabled=false; $('pair').textContent='Try again'; clearInterval(timer); } }
+  $('pair').onclick=async()=>{ const phone=$('phone').value, siteKey=$('key').value; $('pair').disabled=true; $('pair').textContent='Opening the gate…'; $('code').hidden=true; $('sessionBox').hidden=true; setStatus('Dark magic is gathering…'); await fetch('/api/pair',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phone,siteKey})}); timer=setInterval(refresh,1200); refresh(); };
+  $('copy').onclick=async()=>{ await navigator.clipboard.writeText($('session').value); setStatus('Session ID copied. Store it as SESSION_ID in Replit Secrets.'); };
+  $('download').onclick=()=>{ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([$('session').value],{type:'text/plain'}));a.download='captain-yami-session.txt';a.click(); };
+</script>
+</body></html>
