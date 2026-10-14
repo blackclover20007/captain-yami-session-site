@@ -28,7 +28,31 @@ function authDirFor(id) { return path.join(sessionRoot, id, 'auth_info'); }
 function publicPairing(state) { return { ...state.pairing, qr: state.pairing.mode === 'qr' ? state.pairing.qr : '' }; }
 
 function getSession(id) { return id && sessions.get(id); }
-function requireSession(req, input = {}) { return getSession(req.headers['x-session-id'] || input.sessionId); }
+async function resolveSession(id) {
+  if (!id || !/^yami_[A-Za-z0-9_-]{24}$/.test(id)) return null;
+  const existing = getSession(id);
+  if (existing) return existing;
+  const authDir = authDirFor(id);
+  if (!(await registered(authDir))) return null;
+  const state = {
+    id,
+    authDir,
+    activeSocket: null,
+    lastPairAt: 0,
+    pairing: {
+      status: 'complete',
+      mode: 'restored',
+      code: '',
+      qr: '',
+      phone: '',
+      sessionId: await collectSessionId(authDir),
+      message: 'Session restored. Copy it into the bot deployment.'
+    }
+  };
+  sessions.set(id, state);
+  return state;
+}
+function sessionIdFrom(req, input = {}) { return req.headers['x-session-id'] || input.sessionId; }
 
 async function registered(authDir) {
   try {
@@ -135,14 +159,14 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && req.url === '/api/status') {
       if (!keyIsValid(req.headers['x-site-key'])) return json(res, 403, { error: 'Invalid site key.' });
-      const state = requireSession(req);
+      const state = await resolveSession(sessionIdFrom(req));
       if (!state) return json(res, 404, { error: 'Session slot not found. Create a new slot.' });
       return json(res, 200, publicPairing(state));
     }
     if (req.method === 'POST' && ['/api/pair', '/api/pair-qr'].includes(req.url)) {
       const input = await body(req);
       if (!keyIsValid(input.siteKey)) return json(res, 403, { error: 'Invalid site key.' });
-      const state = requireSession(req, input);
+      const state = await resolveSession(sessionIdFrom(req, input));
       if (!state) return json(res, 404, { error: 'Session slot not found. Create a new slot first.' });
       const mode = req.url === '/api/pair-qr' ? 'qr' : 'code';
       const phone = cleanPhone(input.phone);
@@ -153,7 +177,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/reset') {
       const input = await body(req);
       if (!keyIsValid(input.siteKey)) return json(res, 403, { error: 'Invalid site key.' });
-      const state = requireSession(req, input);
+      const state = await resolveSession(sessionIdFrom(req, input));
       if (!state) return json(res, 404, { error: 'Session slot not found.' });
       if (state.activeSocket) return json(res, 409, { error: 'Finish or cancel the active pairing ritual first.' });
       await rm(path.dirname(state.authDir), { recursive: true, force: true });
@@ -163,7 +187,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/session/delete') {
       const input = await body(req);
       if (!keyIsValid(input.siteKey)) return json(res, 403, { error: 'Invalid site key.' });
-      const state = requireSession(req, input);
+      const state = await resolveSession(sessionIdFrom(req, input));
       if (!state) return json(res, 404, { error: 'Session slot not found.' });
       if (state.activeSocket) return json(res, 409, { error: 'Finish or cancel the active pairing ritual first.' });
       await rm(path.dirname(state.authDir), { recursive: true, force: true });
