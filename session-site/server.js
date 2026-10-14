@@ -51,6 +51,28 @@ async function collectSessionId(authDir) {
   return `YAMI_SESSION_V1.${gzipSync(Buffer.from(JSON.stringify(files))).toString('base64url')}`;
 }
 
+async function finishReconnectedSession(state, sock) {
+  state.pairing = { ...state.pairing, status: 'complete', sessionId: await collectSessionId(state.authDir), message: 'Session forged. Copy it into the bot deployment.', qr: '' };
+  state.activeSocket = null;
+  await sock.end?.(undefined);
+}
+
+async function reconnectAfterPairingRestart(state, mode) {
+  const { state: authState, saveCreds } = await useMultiFileAuthState(state.authDir);
+  const sock = makeWASocket({ auth: authState, browser: Browsers.ubuntu('Chrome'), logger, markOnlineOnConnect: false, syncFullHistory: false });
+  state.activeSocket = sock;
+  sock.ev.on('creds.update', saveCreds);
+  sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
+    if (connection === 'open') return finishReconnectedSession(state, sock);
+    if (connection === 'close') {
+      const code = lastDisconnect?.error?.output?.statusCode;
+      state.activeSocket = null;
+      state.pairing = { ...state.pairing, status: 'failed', qr: '', sessionId: '', message: `WhatsApp closed the resumed session (${code || 'temporary error'}). Refresh and try again.` };
+    }
+  });
+  state.pairing = { ...state.pairing, status: 'reconnecting', mode, qr: '', message: 'WhatsApp accepted the code. Reopening the Captain Yami session…' };
+}
+
 async function startPairing(state, { phone = '', requestedKey, mode }) {
   if (!keyIsValid(requestedKey)) throw new Error('Invalid site key.');
   if (state.activeSocket || ['waiting', 'code', 'qr'].includes(state.pairing.status)) throw new Error('This session slot already has a pairing ritual active.');
@@ -71,12 +93,14 @@ async function startPairing(state, { phone = '', requestedKey, mode }) {
       state.pairing = { ...state.pairing, status: 'qr', qr: await QRCode.toDataURL(qr, { margin: 2, width: 320 }), message: 'Scan this QR with WhatsApp → Linked devices → Link a device.' };
     }
     if (connection === 'open') {
-      state.pairing = { ...state.pairing, status: 'complete', sessionId: await collectSessionId(state.authDir), message: 'Session forged. Copy it into the bot deployment.', qr: '' };
-      state.activeSocket = null;
-      await sock.end?.(undefined);
+      await finishReconnectedSession(state, sock);
     }
     if (connection === 'close' && state.pairing.status !== 'complete') {
       const code = lastDisconnect?.error?.output?.statusCode;
+      if (code === 515 && mode === 'code' && state.pairing.code) {
+        await reconnectAfterPairingRestart(state, mode);
+        return;
+      }
       const recovery = code === 428 ? ' Check WhatsApp Linked devices, remove an unused companion, then retry.' : ' Try again.';
       state.pairing = { ...state.pairing, status: 'failed', code: '', qr: '', sessionId: '', message: `WhatsApp closed the gate (${code || 'temporary error'}).${recovery}` };
       state.activeSocket = null;
