@@ -19,7 +19,16 @@ Replit exposes the web app on port `3000`. Set `PAIRING_SITE_KEY` as a Replit Se
 
 ## Deploy on Render
 
-Deploy this repository as a Render Blueprint. The included `render.yaml` starts the service with `npm start` and generates a `PAIRING_SITE_KEY`. Open the Render URL, enter the generated key, and follow the WhatsApp instructions.
+Deploy this repository as a Render Blueprint. The included `render.yaml` creates a Node web service, runs `npm install`, starts it with `npm start`, binds through Render's `PORT` on `0.0.0.0`, and checks `/health`. Render generates a `PAIRING_SITE_KEY`; open the Render URL, enter that generated key, and follow the WhatsApp instructions.
+
+If you configure the service manually instead of using the Blueprint, use:
+
+```text
+Runtime: Node
+Build command: npm install
+Start command: npm start
+Health check path: /health
+```
 
 ## Pair and export
 

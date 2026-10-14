@@ -98,6 +98,9 @@ async function body(req) {
 
 const server = http.createServer(async (req, res) => {
   try {
+    if (req.method === 'GET' && req.url === '/health') {
+      return json(res, 200, { ok: true, service: 'captain-yami-session-site' });
+    }
     if (req.method === 'GET' && req.url === '/api/status') {
       if (siteKey && req.headers['x-site-key'] !== siteKey) return json(res, 403, { error: 'Invalid site key.' });
       return json(res, 200, { ...pairing, sessionId: pairing.status === 'complete' ? pairing.sessionId : '' });
