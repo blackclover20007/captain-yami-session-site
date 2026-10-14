@@ -32,12 +32,17 @@ Health check path: /health
 
 ## Pair and export
 
-1. Enter the WhatsApp number in international format with country code.
-2. On the phone open **WhatsApp → Linked devices → Link a device → Link with phone number**.
-3. Enter the code shown by the Devil Gate page.
-4. Wait for the session to complete.
-5. Copy the `YAMI_SESSION_V1...` value.
-6. Put it in the bot deployment as:
+The Devil Gate menu has three session controls:
+
+- **Phone Code**: enter the number, then use **WhatsApp → Linked devices → Link a device → Link with phone number** and enter the displayed code.
+- **QR Code**: choose QR Code and scan the live QR from **WhatsApp → Linked devices → Link a device**.
+- **Delete Existing Session**: protected by `PAIRING_SITE_KEY`; use it when the service says a session already exists or when switching to another WhatsApp account. This deletes the pairing site's local `auth_info/` only; it does not delete the bot host's copied session ID.
+
+After either pairing method:
+
+1. Wait for the session to complete.
+2. Copy the `YAMI_SESSION_V1...` value.
+3. Put it in the bot deployment as:
 
 ```env
 SESSION_ID=YAMI_SESSION_V1...
