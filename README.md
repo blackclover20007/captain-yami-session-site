@@ -62,6 +62,8 @@ The panel creates an isolated session slot for each visitor and stores its tempo
 
 The session ID is still shown only after that slot successfully connects. Each user should copy their own ID into their own bot deployment as `SESSION_ID`.
 
+When pairing completes, the page displays a **Session ready** panel. The `YAMI_SESSION_V1...` value is blurred by default; use **Reveal Session ID** or **Copy Session ID**. Completed slots are restored from `SESSION_ROOT` when the page or service restarts, so refreshing the page does not hide a successfully generated session.
+
 ## Security
 
 Treat the session ID and `auth_info/` as passwords. Never commit them, paste them into public issues, or expose the status endpoint without `PAIRING_SITE_KEY`. If a session is exposed, unlink it from WhatsApp and generate a new one.
