@@ -77,7 +77,8 @@ async function startPairing(state, { phone = '', requestedKey, mode }) {
     }
     if (connection === 'close' && state.pairing.status !== 'complete') {
       const code = lastDisconnect?.error?.output?.statusCode;
-      state.pairing = { ...state.pairing, status: 'failed', code: '', qr: '', sessionId: '', message: `WhatsApp closed the gate (${code || 'temporary error'}). Try again.` };
+      const recovery = code === 428 ? ' Check WhatsApp Linked devices, remove an unused companion, then retry.' : ' Try again.';
+      state.pairing = { ...state.pairing, status: 'failed', code: '', qr: '', sessionId: '', message: `WhatsApp closed the gate (${code || 'temporary error'}).${recovery}` };
       state.activeSocket = null;
     }
   });

@@ -12,7 +12,7 @@
     "dev": "node --watch session-site/server.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "latest",
+    "@whiskeysockets/baileys": "6.7.24",
     "dotenv": "latest",
     "pino": "latest",
     "qrcode": "^1.5.4"
