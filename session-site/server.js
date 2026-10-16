@@ -75,8 +75,23 @@ async function collectSessionId(authDir) {
   return `YAMI_SESSION_V1.${gzipSync(Buffer.from(JSON.stringify(files))).toString('base64url')}`;
 }
 
+function bindCredentialPersistence(state, sock, saveCreds) {
+  state.saveCredsPromise = Promise.resolve();
+  sock.ev.on('creds.update', (update) => {
+    state.saveCredsPromise = state.saveCredsPromise
+      .then(() => saveCreds(update))
+      .catch((error) => logger.warn({ error: error.message }, 'Could not persist WhatsApp credentials'));
+  });
+}
+
+async function waitForCredentialPersistence(state) {
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  await state.saveCredsPromise;
+}
+
 async function finishReconnectedSession(state, sock) {
-  const sessionId = await collectSessionId(state.authDir);
+  await waitForCredentialPersistence(state);
+  let sessionId = await collectSessionId(state.authDir);
   const phone = state.pairing.phone;
   const target = phone ? `${phone}@s.whatsapp.net` : sock.user?.id;
   let delivery = 'failed';
@@ -86,6 +101,14 @@ async function finishReconnectedSession(state, sock) {
     await sock.sendMessage(target, {
       text: `Captain Yami Bot session ready.\n\nSESSION_ID (keep private):\n${sessionId}\n\nAdd it to your bot host as:\nSESSION_ID=${sessionId}`
     });
+    await waitForCredentialPersistence(state);
+    const finalSessionId = await collectSessionId(state.authDir);
+    if (finalSessionId !== sessionId) {
+      await sock.sendMessage(target, {
+        text: `Updated SESSION_ID (use this latest value):\n${finalSessionId}`
+      });
+    }
+    sessionId = finalSessionId;
     delivery = 'sent';
     message = 'Session forged and sent privately to your WhatsApp chat. The panel also has a hidden copy button.';
   } catch (error) {
@@ -101,7 +124,7 @@ async function reconnectAfterPairingRestart(state, mode) {
   const { state: authState, saveCreds } = await useMultiFileAuthState(state.authDir);
   const sock = makeWASocket({ auth: authState, browser: Browsers.ubuntu('Chrome'), logger, markOnlineOnConnect: false, syncFullHistory: false });
   state.activeSocket = sock;
-  sock.ev.on('creds.update', saveCreds);
+  bindCredentialPersistence(state, sock, saveCreds);
   sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
     if (connection === 'open') return finishReconnectedSession(state, sock);
     if (connection === 'close') {
@@ -128,7 +151,7 @@ async function startPairing(state, { phone = '', requestedKey, mode }) {
 
   const sock = makeWASocket({ auth: authState, browser: Browsers.ubuntu('Chrome'), logger, markOnlineOnConnect: false, syncFullHistory: false });
   state.activeSocket = sock;
-  sock.ev.on('creds.update', saveCreds);
+  bindCredentialPersistence(state, sock, saveCreds);
   sock.ev.on('connection.update', async ({ connection, qr, lastDisconnect }) => {
     if (qr && mode === 'qr') {
       state.pairing = { ...state.pairing, status: 'qr', qr: await QRCode.toDataURL(qr, { margin: 2, width: 320 }), message: 'Scan this QR with WhatsApp → Linked devices → Link a device.' };
