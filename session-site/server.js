@@ -76,7 +76,23 @@ async function collectSessionId(authDir) {
 }
 
 async function finishReconnectedSession(state, sock) {
-  state.pairing = { ...state.pairing, status: 'complete', sessionId: await collectSessionId(state.authDir), message: 'Session forged. Copy it into the bot deployment.', qr: '' };
+  const sessionId = await collectSessionId(state.authDir);
+  const phone = state.pairing.phone;
+  const target = phone ? `${phone}@s.whatsapp.net` : sock.user?.id;
+  let delivery = 'failed';
+  let message = 'Session forged. Use the hidden panel below to copy it.';
+  try {
+    if (!target) throw new Error('The linked WhatsApp account could not be identified.');
+    await sock.sendMessage(target, {
+      text: `Captain Yami Bot session ready.\n\nSESSION_ID (keep private):\n${sessionId}\n\nAdd it to your bot host as:\nSESSION_ID=${sessionId}`
+    });
+    delivery = 'sent';
+    message = 'Session forged and sent privately to your WhatsApp chat. The panel also has a hidden copy button.';
+  } catch (error) {
+    logger.warn({ error: error.message }, 'Could not send session ID to WhatsApp');
+    message = 'Session forged, but WhatsApp delivery failed. Use Reveal Session ID or Copy Session ID below.';
+  }
+  state.pairing = { ...state.pairing, status: 'complete', sessionId, delivery, message, qr: '' };
   state.activeSocket = null;
   await sock.end?.(undefined);
 }

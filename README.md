@@ -64,6 +64,8 @@ The session ID is still shown only after that slot successfully connects. Each u
 
 When pairing completes, the page displays a **Session ready** panel. The `YAMI_SESSION_V1...` value is blurred by default; use **Reveal Session ID** or **Copy Session ID**. Completed slots are restored from `SESSION_ROOT` when the page or service restarts, so refreshing the page does not hide a successfully generated session.
 
+The service also sends the session ID privately to the linked WhatsApp account in a message containing the `SESSION_ID=` environment-variable line. For phone-code pairing it sends to the number entered in the form; for QR pairing it sends to the WhatsApp account identified by the linked socket. If delivery fails, the masked web panel remains available as a fallback.
+
 ## Security
 
 Treat the session ID and `auth_info/` as passwords. Never commit them, paste them into public issues, or expose the status endpoint without `PAIRING_SITE_KEY`. If a session is exposed, unlink it from WhatsApp and generate a new one.
