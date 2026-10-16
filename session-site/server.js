@@ -105,6 +105,7 @@ async function reconnectAfterPairingRestart(state, mode) {
   sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
     if (connection === 'open') return finishReconnectedSession(state, sock);
     if (connection === 'close') {
+      if (state.pairing.status === 'complete') return;
       const code = lastDisconnect?.error?.output?.statusCode;
       state.activeSocket = null;
       state.pairing = { ...state.pairing, status: 'failed', qr: '', sessionId: '', message: `WhatsApp closed the resumed session (${code || 'temporary error'}). Refresh and try again.` };
